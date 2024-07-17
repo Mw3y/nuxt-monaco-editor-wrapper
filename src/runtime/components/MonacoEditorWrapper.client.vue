@@ -14,6 +14,23 @@ import { useOpenEditorStub } from 'monaco-editor-wrapper/vscode/services'
 import { WORKSPACE_PATH } from '../workspace.config'
 import { ClangdLanguageServer } from '../workers/cpp/ClangdLanguageServer'
 
+interface Props {
+  modelValue?: string
+  language?: string
+  options?: UserConfig
+}
+
+interface Emits {
+  (event: 'update:modelValue', value: string): void
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  modelValue: () => '',
+  language: () => 'plaintext',
+})
+
+const emits = defineEmits<Emits>()
+
 // -------------------[ Language client ]------------------
 const languageServer = await ClangdLanguageServer.initialize()
 
