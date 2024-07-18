@@ -9,9 +9,7 @@ import type { Nuxt } from '@nuxt/schema'
 import importMetaUrlPlugin from '@codingame/esbuild-import-meta-url-plugin'
 
 // Module options TypeScript interface definition
-export interface ModuleOptions {
-  workspacePath: string
-}
+export interface ModuleOptions {}
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
@@ -24,14 +22,10 @@ export default defineNuxtModule<ModuleOptions>({
   },
   // Default configuration options of the Nuxt module
   defaults: {
-    workspacePath: 'workspace',
   },
   setup(_options, _nuxt) {
     const { resolve } = createResolver(import.meta.url)
 
-    // Necessary setup for the module to work properly
-    injectModuleOptions(_options, _nuxt)
-    configureCrossOriginPolicy(_nuxt)
     configureVite(_nuxt)
 
     addComponent({
@@ -44,30 +38,10 @@ export default defineNuxtModule<ModuleOptions>({
       from: resolve('composables/useMonacoWrapper'),
     })
 
-    // Add public assets
-    _nuxt.hook('nitro:config', async (nitroConfig) => {
-      nitroConfig.publicAssets ||= []
-      nitroConfig.publicAssets.push({
-        dir: resolve('./runtime/public'),
-        maxAge: 60 * 60 * 24 * 1, // 1 day
-      })
-    })
-
     // Do not add the extension since the `.ts` will be transpiled to `.mjs` after `npm run prepack`
     addPlugin(resolve('./runtime/plugin'))
   },
 })
-
-function configureCrossOriginPolicy(nuxt: Nuxt) {
-  nuxt.options.routeRules ||= {}
-  nuxt.options.routeRules['/**'] ||= {}
-
-  const rule = nuxt.options.routeRules['/**']
-  rule.headers ||= {}
-  // Fix SharedArrayBuffer is not defined in production
-  rule.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
-  rule.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
-}
 
 function configureVite(nuxt: Nuxt) {
   nuxt.options.vite ||= {}
@@ -76,12 +50,6 @@ function configureVite(nuxt: Nuxt) {
   vite.resolve ||= {}
   vite.resolve.dedupe ||= []
   vite.resolve.dedupe.push('vscode')
-
-  // Allow top level await usage in worker
-  vite.build ||= {}
-  vite.build.target = 'esnext'
-  vite.worker ||= {}
-  vite.worker.format = 'es'
 
   // Allow to run the `new URL(..., import.meta.url)` syntax
   // This is needed for monaco-editor-wrapper
@@ -93,21 +61,4 @@ function configureVite(nuxt: Nuxt) {
     // @ts-ignore
     importMetaUrlPlugin,
   )
-
-  // Fix SharedArrayBuffer is not defined in development
-  vite.plugins ||= []
-  vite.plugins.push({
-    name: 'configure-response-headers',
-    configureServer: (server) => {
-      server.middlewares.use((_req, res, next) => {
-        res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp')
-        res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
-        next()
-      })
-    },
-  })
-}
-
-function injectModuleOptions(options: ModuleOptions, nuxt: Nuxt) {
-  nuxt.options.runtimeConfig.public['monacoWorkspacePath'] = options.workspacePath
 }

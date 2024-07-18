@@ -1,13 +1,15 @@
 <script lang="ts" setup>
 import defu from 'defu'
-import { type UserConfig } from 'monaco-editor-wrapper'
+import { type UserConfig, type WrapperConfig } from 'monaco-editor-wrapper'
 import { useWorkerFactory } from 'monaco-editor-wrapper/workerFactory'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import type { LoggerConfig } from 'monaco-languageclient/tools'
 import { computed, onUnmounted, ref, watch } from 'vue'
+import getConfigurationServiceOverride from '@codingame/monaco-vscode-configuration-service-override'
+import getEditorServiceOverride from '@codingame/monaco-vscode-editor-service-override'
+import getKeybindingsServiceOverride from '@codingame/monaco-vscode-keybindings-service-override'
+import { useOpenEditorStub } from 'monaco-editor-wrapper/vscode/services'
 import { useMonacoWrapper } from '../composables/useMonacoWrapper'
-import { createDefaultWrapperConfig } from './wrapperConfig.default'
-import { useRuntimeConfig } from '#imports'
 
 interface Emits {
   (event: 'update:modelValue', value: string): void
@@ -24,13 +26,27 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // ------------[ Monaco Editor Wrapper config ]------------
-const { monacoWorkspacePath } = useRuntimeConfig().public
+const wrapperConfig: WrapperConfig = {
+  editorAppConfig: {
+    $type: 'extended',
+    useDiffEditor: false,
+    codeResources: {},
+  },
+  serviceConfig: {
+    userServices: {
+      ...getConfigurationServiceOverride(),
+      ...getEditorServiceOverride(useOpenEditorStub),
+      ...getKeybindingsServiceOverride(),
+    },
+    debugLogging: import.meta.dev,
+  },
+}
 const loggerConfig: LoggerConfig = {
   enabled: true,
   debugEnabled: import.meta.dev,
 }
 const defaultConfig: UserConfig = {
-  wrapperConfig: createDefaultWrapperConfig(monacoWorkspacePath),
+  wrapperConfig: wrapperConfig,
   languageClientConfig: undefined,
   loggerConfig: loggerConfig,
 }
