@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { watch, onUnmounted, ref } from 'vue'
+import defu from 'defu'
 import {
   MonacoEditorLanguageClientWrapper,
   type UserConfig,
 } from 'monaco-editor-wrapper'
 import { useWorkerFactory } from 'monaco-editor-wrapper/workerFactory'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import defu from 'defu'
-import { ClangdLanguageServer } from '../workers/cpp/ClangdLanguageServer'
+import type { LoggerConfig } from 'monaco-languageclient/tools'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { createDefaultWrapperConfig } from './wrapperConfig.default'
 import { useRuntimeConfig } from '#app'
 
@@ -17,29 +17,23 @@ interface Emits {
 
 interface Props {
   modelValue?: string
-  language?: string
   config?: UserConfig
-  options?: UserConfig
 }
 
 const emit = defineEmits<Emits>()
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => '',
-  language: () => 'plaintext',
 })
-
-// -------------------[ Language client ]------------------
-const languageServer = await ClangdLanguageServer.initialize()
 
 // ------------[ Monaco Editor Wrapper config ]------------
 const { monacoWorkspacePath } = useRuntimeConfig().public
-const loggerConfig: UserConfig['loggerConfig'] = {
+const loggerConfig: LoggerConfig = {
   enabled: true,
   debugEnabled: import.meta.dev,
 }
 const defaultConfig: UserConfig = {
   wrapperConfig: createDefaultWrapperConfig(monacoWorkspacePath),
-  languageClientConfig: languageServer?.createMonacoConfig(),
+  languageClientConfig: undefined,
   loggerConfig: loggerConfig,
 }
 
@@ -55,9 +49,9 @@ useWorkerFactory({
 const monacoRef = ref<HTMLElement>()
 const wrapper = new MonacoEditorLanguageClientWrapper()
 
-const userConfig = defu(props.config, defaultConfig)
+const userConfig = computed(() => defu(() => props.config, defaultConfig))
 watch(monacoRef, async () => {
-  await wrapper.initAndStart(userConfig, monacoRef.value!)
+  await wrapper.initAndStart(userConfig.value, monacoRef.value!)
   // Handle model value changes
   const textModels = wrapper.getTextModels()
   if (textModels && textModels.text) {
@@ -73,11 +67,20 @@ watch(monacoRef, async () => {
       }
     })
   }
+
+  // Restart wrapper when needed
+  watch(userConfig, async (oldConfig, newConfig) => {
+    if (wrapper.isReInitRequired(newConfig, oldConfig)) {
+      if (wrapper.isInitDone()) {
+        await wrapper.dispose()
+      }
+      await wrapper.initAndStart(userConfig.value, monacoRef.value!)
+    }
+  })
 })
 
 onUnmounted(() => {
   wrapper.dispose()
-  languageServer?.dispose()
 })
 </script>
 
