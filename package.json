@@ -37,7 +37,6 @@
     "@nuxt/kit": "^3.12.3",
     "@typefox/pyright-browser": "^1.1.299",
     "@types/vscode": "^1.91.0",
-    "defu": "^6.1.4",
     "jszip": "^3.10.1",
     "monaco-editor": "npm:@codingame/monaco-vscode-editor-api@~5.1.2",
     "monaco-editor-wrapper": "~5.1.2",

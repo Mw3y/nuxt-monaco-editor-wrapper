@@ -6,41 +6,78 @@ import {
 } from 'monaco-editor-wrapper'
 import { useWorkerFactory } from 'monaco-editor-wrapper/workerFactory'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
-import defu from 'defu'
+import { Uri } from 'vscode'
+import getConfigurationServiceOverride from '@codingame/monaco-vscode-configuration-service-override'
+import getEditorServiceOverride from '@codingame/monaco-vscode-editor-service-override'
+import getKeybindingsServiceOverride from '@codingame/monaco-vscode-keybindings-service-override'
+import { useOpenEditorStub } from 'monaco-editor-wrapper/vscode/services'
+import { WORKSPACE_PATH } from '../workspace.config'
 import { ClangdLanguageServer } from '../workers/cpp/ClangdLanguageServer'
-import { createDefaultWrapperConfig } from './wrapperConfig.default'
-import { useRuntimeConfig } from '#app'
+
+interface Props {
+  modelValue?: string
+  language?: string
+  options?: UserConfig
+}
 
 interface Emits {
   (event: 'update:modelValue', value: string): void
 }
 
-interface Props {
-  modelValue?: string
-  language?: string
-  config?: UserConfig
-  options?: UserConfig
-}
-
-const emit = defineEmits<Emits>()
 const props = withDefaults(defineProps<Props>(), {
   modelValue: () => '',
   language: () => 'plaintext',
 })
 
+const emits = defineEmits<Emits>()
+
 // -------------------[ Language client ]------------------
 const languageServer = await ClangdLanguageServer.initialize()
 
 // ------------[ Monaco Editor Wrapper config ]------------
-const { monacoWorkspacePath } = useRuntimeConfig().public
+const wrapperConfig: UserConfig['wrapperConfig'] = {
+  editorAppConfig: {
+    $type: 'extended',
+    useDiffEditor: false,
+    codeResources: {
+      main: {
+        text: '#include <print>\n\nint main() {\n    std::println("Hello, {}!", "world");\n}\n',
+        uri: `${WORKSPACE_PATH}/main.cpp`,
+        // enforceLanguageId: languageServer.languageId,
+      },
+    },
+    userConfiguration: {
+      json: JSON.stringify({
+        'workbench.colorTheme': 'GitHub Light',
+        'editor.guides.bracketPairsHorizontal': 'active',
+        'editor.wordBasedSuggestions': 'off',
+        'editor.quickSuggestionsDelay': 200,
+      }),
+    },
+  },
+  serviceConfig: {
+    userServices: {
+      ...getConfigurationServiceOverride(),
+      ...getEditorServiceOverride(useOpenEditorStub),
+      ...getKeybindingsServiceOverride(),
+    },
+    workspaceConfig: {
+      workspaceProvider: {
+        trusted: true,
+        workspace: {
+          workspaceUri: Uri.file(WORKSPACE_PATH),
+        },
+        async open() {
+          return false
+        },
+      },
+    },
+    debugLogging: true,
+  },
+}
 const loggerConfig: UserConfig['loggerConfig'] = {
   enabled: true,
-  debugEnabled: import.meta.dev,
-}
-const defaultConfig: UserConfig = {
-  wrapperConfig: createDefaultWrapperConfig(monacoWorkspacePath),
-  languageClientConfig: languageServer?.createMonacoConfig(),
-  loggerConfig: loggerConfig,
+  debugEnabled: true,
 }
 
 // ------------[ Monaco Editor Wrapper Worker ]------------
@@ -54,24 +91,19 @@ useWorkerFactory({
 // ----------------[ Launch Monaco Editor ]----------------
 const monacoRef = ref<HTMLElement>()
 const wrapper = new MonacoEditorLanguageClientWrapper()
+const userConfig = {
+  wrapperConfig: wrapperConfig,
+  languageClientConfig: languageServer?.createMonacoConfig(),
+  loggerConfig: loggerConfig,
+}
 
-const userConfig = defu(props.config, defaultConfig)
+// onMounted(async () => {
+//   await wrapper.initAndStart(userConfig, monacoRef.value!)
+// })
+
 watch(monacoRef, async () => {
-  await wrapper.initAndStart(userConfig, monacoRef.value!)
-  // Handle model value changes
-  const textModels = wrapper.getTextModels()
-  if (textModels && textModels.text) {
-    const text = textModels.text
-    // Emit v-model changes
-    text.onDidChangeContent((_) => {
-      emit('update:modelValue', text.getValue())
-    })
-    // Apply v-model changes
-    watch(() => props.modelValue, (modelValue) => {
-      if (text.getValue() !== modelValue) {
-        text.setValue(modelValue)
-      }
-    })
+  if (monacoRef.value) {
+    await wrapper.initAndStart(userConfig, monacoRef.value!)
   }
 })
 
