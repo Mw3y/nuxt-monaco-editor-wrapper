@@ -29,6 +29,7 @@ export default defineNuxtModule<ModuleOptions>({
     const { resolve } = createResolver(import.meta.url)
 
     // Necessary setup for the module to work properly
+    injectModuleOptions(_options, _nuxt)
     configureCrossOriginPolicy(_nuxt)
     configureVite(_nuxt)
 
@@ -84,7 +85,7 @@ function configureVite(nuxt: Nuxt) {
   vite.optimizeDeps.esbuildOptions.plugins.push(
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    importMetaUrlPlugin
+    importMetaUrlPlugin,
   )
 
   // Fix SharedArrayBuffer is not defined in development
@@ -99,4 +100,8 @@ function configureVite(nuxt: Nuxt) {
       })
     },
   })
+}
+
+function injectModuleOptions(options: ModuleOptions, nuxt: Nuxt) {
+  nuxt.options.runtimeConfig.public['monacoWorkspacePath'] = options.workspacePath
 }
