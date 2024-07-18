@@ -3,6 +3,7 @@ import {
   addPlugin,
   createResolver,
   addComponent,
+  addImports,
 } from '@nuxt/kit'
 import type { Nuxt } from '@nuxt/schema'
 import importMetaUrlPlugin from '@codingame/esbuild-import-meta-url-plugin'
@@ -36,6 +37,11 @@ export default defineNuxtModule<ModuleOptions>({
     addComponent({
       name: 'MonacoEditorWrapper',
       filePath: resolve('runtime/components/MonacoEditorWrapper.client.vue'),
+    })
+
+    addImports({
+      name: 'useMonacoWrapper',
+      from: resolve('composables/useMonacoWrapper'),
     })
 
     // Add public assets

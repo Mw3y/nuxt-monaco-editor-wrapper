@@ -1,15 +1,13 @@
 <script lang="ts" setup>
 import defu from 'defu'
-import {
-  MonacoEditorLanguageClientWrapper,
-  type UserConfig,
-} from 'monaco-editor-wrapper'
+import { type UserConfig } from 'monaco-editor-wrapper'
 import { useWorkerFactory } from 'monaco-editor-wrapper/workerFactory'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import type { LoggerConfig } from 'monaco-languageclient/tools'
 import { computed, onUnmounted, ref, watch } from 'vue'
+import { useMonacoWrapper } from '../composables/useMonacoWrapper'
 import { createDefaultWrapperConfig } from './wrapperConfig.default'
-import { useRuntimeConfig } from '#app'
+import { useRuntimeConfig } from '#imports'
 
 interface Emits {
   (event: 'update:modelValue', value: string): void
@@ -47,9 +45,10 @@ useWorkerFactory({
 
 // ----------------[ Launch Monaco Editor ]----------------
 const monacoRef = ref<HTMLElement>()
-const wrapper = new MonacoEditorLanguageClientWrapper()
-
 const userConfig = computed(() => defu(() => props.config, defaultConfig))
+const wrapper = useMonacoWrapper()!
+
+// Initialize monaco when the html element is available
 watch(monacoRef, async () => {
   await wrapper.initAndStart(userConfig.value, monacoRef.value!)
   // Handle model value changes
@@ -61,11 +60,14 @@ watch(monacoRef, async () => {
       emit('update:modelValue', text.getValue())
     })
     // Apply v-model changes
-    watch(() => props.modelValue, (modelValue) => {
-      if (text.getValue() !== modelValue) {
-        text.setValue(modelValue)
-      }
-    })
+    watch(
+      () => props.modelValue,
+      (modelValue) => {
+        if (text.getValue() !== modelValue) {
+          text.setValue(modelValue)
+        }
+      },
+    )
   }
 
   // Restart wrapper when needed
