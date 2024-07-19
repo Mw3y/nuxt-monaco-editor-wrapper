@@ -1,6 +1,6 @@
 {
   "name": "nuxt-monaco-editor-wrapper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "mw3y",
   "description": "Integrate monaco-editor-wrapper with Nuxt 3",
   "keywords": [
