@@ -7,11 +7,11 @@ import { useState } from '#imports'
 
 export const _useMonacoWrapperState = () =>
   useState<MonacoEditorLanguageClientWrapper | null>('MonacoWrapperNameSpace',
-    () => new MonacoEditorLanguageClientWrapper())
+    () => import.meta.client ? new MonacoEditorLanguageClientWrapper() : null)
 
 /**
- * Get the monaco editor namespace
- * @returns `monaco-wrapper` namespace: if unavailable (server-side), returns `null`
+ * Get the monaco editor wrapper
+ * @returns `monaco-wrapper` instance: if unavailable (server-side), returns `null`
  */
 export const useMonacoWrapper = (): MonacoEditorLanguageClientWrapper | null =>
   _useMonacoWrapperState().value

@@ -13,16 +13,15 @@ export interface ModuleOptions {}
 
 export default defineNuxtModule<ModuleOptions>({
   meta: {
-    name: 'nuxt-monaco-wrapper',
-    configKey: 'nuxtMonacoWrapper',
+    name: 'nuxt-monaco-editor-wrapper',
+    configKey: 'nuxtMonacoEditorWrapper',
     compatibility: {
       // Semver version of supported nuxt versions
       nuxt: '>=3.0.0',
     },
   },
   // Default configuration options of the Nuxt module
-  defaults: {
-  },
+  defaults: {},
   setup(_options, _nuxt) {
     const { resolve } = createResolver(import.meta.url)
 
